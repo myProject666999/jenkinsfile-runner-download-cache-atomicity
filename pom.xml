@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+The MIT License
+
+Copyright (c) 2004-2011, Sun Microsystems, Inc., Kohsuke Kawaguchi, id:sorokh
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.jenkins-ci</groupId>
+    <artifactId>jenkins</artifactId>
+    <version>1.140</version>
+    <relativePath />
+  </parent>
+
+  <groupId>io.jenkins.jenkinsfile-runner</groupId>
+  <artifactId>parent</artifactId>
+  <version>${revision}${changelist}</version>
+  <packaging>pom</packaging>
+
+  <name>Jenkinsfile Runner</name>
+  <description>Jenkinsfile runner parent POM</description>
+
+  <licenses>
+    <license>
+      <name>The MIT license</name>
+      <url>http://www.opensource.org/licenses/mit-license.php</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <modules>
+    <module>bootstrap</module>
+    <module>setup</module>
+    <module>payload-dependencies</module>
+    <module>payload</module>
+    <module>app</module>
+    <module>packaging-parent-resources</module>
+    <module>packaging-parent-pom</module>
+    <module>packaging-slim-parent-pom</module>
+    <!-- more modules come from profiles -->
+  </modules>
+
+  <properties>
+    <revision>1.0-beta-33</revision>
+    <changelist>-SNAPSHOT</changelist>
+    <gitHubRepo>jenkinsci/jenkinsfile-runner</gitHubRepo>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <java.level>21</java.level>
+    <maven.compiler.release>21</maven.compiler.release>
+    <jenkins.version>2.555.3</jenkins.version>
+    <jenkins.bom.baseline>bom-2.555.x</jenkins.bom.baseline>
+    <jenkins.bom.version>6641.vfe1b_b_3c48a_4a_</jenkins.bom.version>
+    <!-- Jenkins core 2.555.x brings spotbugs-annotations 4.9.8 transitively;
+         the runner parent 1.140 still ships 4.9.4. Match core to satisfy
+         RequireUpperBoundDeps. -->
+    <spotbugs-annotations.version>4.9.8</spotbugs-annotations.version>
+    <jetty.version>12.0.27</jetty.version>
+    <jenkins-test-harness.version>2573.vd91b_8a_43e019</jenkins-test-harness.version>
+    <!--TODO: Reenable once all the issues are fixed (JENKINS-57353)-->
+    <spotbugs.failOnError>false</spotbugs.failOnError>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.jenkins.tools.bom</groupId>
+        <artifactId>${jenkins.bom.baseline}</artifactId>
+        <version>${jenkins.bom.version}</version>
+        <scope>import</scope>
+        <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>org.jenkins-ci.main</groupId>
+        <artifactId>jenkins-bom</artifactId>
+        <version>${jenkins.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!-- Extra libraries -->
+      <dependency>
+        <groupId>io.jenkins.lib</groupId>
+        <artifactId>support-log-formatter</artifactId>
+        <version>1.2</version>
+      </dependency>
+      <dependency> <!-- Upper bounds prevention between Pipeline as YAML and JCAsC-->
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>3.20.0</version>
+      </dependency>
+      <!-- Jenkins 2.555.x brings asm-api plugin 9.10.1; the Jenkins parent
+           still pins org.ow2.asm:asm at 9.9.1. Align to satisfy RequireUpperBoundDeps. -->
+      <dependency>
+        <groupId>org.ow2.asm</groupId>
+        <artifactId>asm</artifactId>
+        <version>9.10.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.ow2.asm</groupId>
+        <artifactId>asm-commons</artifactId>
+        <version>9.10.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.ow2.asm</groupId>
+        <artifactId>asm-tree</artifactId>
+        <version>9.10.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.ow2.asm</groupId>
+        <artifactId>asm-util</artifactId>
+        <version>9.10.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.ow2.asm</groupId>
+        <artifactId>asm-analysis</artifactId>
+        <version>9.10.1</version>
+      </dependency>
+
+      <!-- Plugins -->
+      <dependency>
+        <groupId>org.jenkins-ci.plugins</groupId>
+        <artifactId>pipeline-utility-steps</artifactId>
+        <version>2.16.2</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.github.spotbugs</groupId>
+      <artifactId>spotbugs-annotations</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.code.findbugs</groupId>
+      <artifactId>jsr305</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <!-- maven-hpi-plugin from the parent (3.1746) ships an ASM
+               that does not know class file major version 65 (Java 21).
+               3.1814 understands it. -->
+          <groupId>org.jenkins-ci.tools</groupId>
+          <artifactId>maven-hpi-plugin</artifactId>
+          <version>3.1814.v77d15159f9b_d</version>
+        </plugin>
+        <plugin>
+          <!-- 1.31 from the Jenkins parent ships ASM that does not know Java 21
+               class files (major version 65). 1.35 understands them. -->
+          <groupId>org.kohsuke</groupId>
+          <artifactId>access-modifier-checker</artifactId>
+          <version>1.35</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <!-- to treat executable-war type of artifact correctly -->
+        <groupId>org.jenkins-ci.tools</groupId>
+        <artifactId>maven-hpi-plugin</artifactId>
+        <extensions>true</extensions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <release>21</release>
+        </configuration>
+      </plugin>
+      <plugin>
+        <!-- Java 17+ needs explicit module opens for XStream serialization
+             (hudson.model.ParametersAction#parameterDefinitionNames touches
+             AbstractList.modCount via reflection) and for the appassembler /
+             plugin-manager classloader plumbing. Mirrors the flags baked into
+             app/pom.xml's appassembler config so 'mvn test' has the same JVM
+             posture as the produced bin/jenkinsfile-runner script. -->
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <argLine>-Djdk.net.URLClassPath.disableClassPathURLCheck=true --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --enable-native-access=ALL-UNNAMED</argLine>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Jenkins-ClassFilter-Whitelisted>true</Jenkins-ClassFilter-Whitelisted>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+        <configuration combine.children="append">
+          <tagNameFormat>@{project.version}</tagNameFormat>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <repositories>
+    <repository>
+      <id>repo.jenkins-ci.org</id>
+      <url>https://repo.jenkins-ci.org/public/</url>
+      <!-- allow snapshots -->
+    </repository>
+    <repository>
+      <id>maven-central</id>
+      <url>https://repo1.maven.org/maven2/</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+
+  <pluginRepositories>
+    <pluginRepository>
+      <id>repo.jenkins-ci.org</id>
+      <url>https://repo.jenkins-ci.org/public/</url>
+    </pluginRepository>
+  </pluginRepositories>
+
+  <scm>
+    <connection>scm:git:git://github.com/${gitHubRepo}.git</connection>
+    <developerConnection>scm:git:git@github.com:${gitHubRepo}.git</developerConnection>
+    <url>https://github.com/${gitHubRepo}</url>
+    <tag>1.0-beta-32</tag>
+  </scm>
+
+  <profiles>
+    <profile>
+      <id>package-vanilla</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <modules>
+        <module>vanilla-package</module>
+      </modules>
+    </profile>
+    <!-- Integration tests powered by https://github.com/jenkinsci/jenkinsfile-runner-test-framework -->
+    <!--FIXME(oleg_nenashev): Not functional anymore, see https://github.com/jenkinsci/jenkinsfile-runner/issues/562
+    <profile>
+      <id>run-its</id>
+      <modules>
+        <module>tests</module>
+      </modules>
+    </profile>
+    -->
+    <profile>
+      <id>jacoco</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>0.8.12</version>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>prepare-agent</goal>
+                </goals>
+              </execution>
+             <execution>
+                <id>report</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>report-aggregate</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <!-- TODO: delete once https://github.com/jenkinsci/pom/pull/138 is integrated -->
+          <plugin>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${maven-surefire-plugin.version}</version>
+            <configuration>
+              <argLine>-Djdk.net.URLClassPath.disableClassPathURLCheck=true --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --enable-native-access=ALL-UNNAMED ${argLine}</argLine>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>
