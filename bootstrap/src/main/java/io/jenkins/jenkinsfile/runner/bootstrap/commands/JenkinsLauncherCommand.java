@@ -7,18 +7,19 @@ import io.jenkins.jenkinsfile.runner.bootstrap.ClassLoaderBuilder;
 import io.jenkins.jenkinsfile.runner.bootstrap.IApp;
 import io.jenkins.jenkinsfile.runner.bootstrap.SideClassLoader;
 import io.jenkins.jenkinsfile.runner.bootstrap.Util;
+import io.jenkins.jenkinsfile.runner.bootstrap.util.CacheWriter;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import picocli.CommandLine;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.AccessController;
@@ -75,6 +76,12 @@ public abstract class JenkinsLauncherCommand implements Callable<Integer> {
      */
     private File cache = new File(System.getProperty("user.home") + "/.jenkinsfile-runner/");
 
+    /**
+     * Writes downloads into the cache through a temporary file and an atomic move,
+     * so concurrent instances never see a partially downloaded artifact at its final path.
+     */
+    private final CacheWriter cacheWriter = new CacheWriter();
+
     @SuppressFBWarnings("DM_EXIT")
     public void postConstruct() throws IOException {
         final JenkinsLauncherOptions settings = getLauncherOptions();
@@ -128,22 +135,42 @@ public abstract class JenkinsLauncherCommand implements Callable<Integer> {
         }
     }
 
-    private void copyURLToFile(URL url, File file) throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setInstanceFollowRedirects(true);
-        int status = connection.getResponseCode();
+    /**
+     * Opens a connection to the given URL, following one HTTP redirect hop manually.
+     *
+     * <p>Works with any {@link URLConnection}, not only {@link HttpURLConnection}: for non-HTTP
+     * protocols (for example {@code file:}) there is no response status to inspect, so the
+     * plain connection is returned and its stream is read directly.</p>
+     */
+    private static URLConnection openConnectionFollowingRedirects(URL url) throws IOException {
+        URLConnection connection = url.openConnection();
+        if (connection instanceof HttpURLConnection) {
+            HttpURLConnection httpConnection = (HttpURLConnection) connection;
+            httpConnection.setInstanceFollowRedirects(true);
+            int status = httpConnection.getResponseCode();
 
-        // Connections won't automatically redirect across different protocols, i.e. going
-        // from http to https. We have to handle that ourselves.
-        if (REDIRECT_STATUSES.contains(status)) {
-            String newUrl = connection.getHeaderField("Location");
-            System.out.println("Following redirect...");
-            connection = (HttpURLConnection) new URL(newUrl).openConnection();
+            // Connections won't automatically redirect across different protocols, i.e. going
+            // from http to https. We have to handle that ourselves.
+            if (REDIRECT_STATUSES.contains(status)) {
+                String newUrl = httpConnection.getHeaderField("Location");
+                System.out.println("Following redirect...");
+                connection = new URL(newUrl).openConnection();
+            }
         }
+        return connection;
+    }
 
-        try (InputStream stream = connection.getInputStream()) {
-            FileUtils.copyInputStreamToFile(stream, file);
-        }
+    /**
+     * Downloads {@code url} into {@code file} via {@link CacheWriter}: the content lands in a
+     * same-directory temporary file and is moved to the final path only after the full stream
+     * has been read and, when a {@code Content-Length} header is present, its size verified.
+     * Without that header the length is unknown, so no verification is performed.
+     */
+    void copyURLToFile(URL url, File file) throws IOException {
+        final URLConnection connection = openConnectionFollowingRedirects(url);
+        // getContentLengthLong() returns -1 when the header is absent, in which case
+        // CacheWriter skips the length check rather than guessing an expected size.
+        cacheWriter.downloadToCache(file, connection::getInputStream, connection::getContentLengthLong);
     }
 
     private File getJenkinsWar(final @CheckForNull String requiredVersion) throws IOException {
@@ -182,7 +209,7 @@ public abstract class JenkinsLauncherCommand implements Callable<Integer> {
             plugin.getParentFile().mkdirs();
             final URL url = new URL(getLauncherOptions().getMirrorURL(String.format("https://updates.jenkins.io/download/plugins/%s/%s/%s.hpi", shortname, version, shortname)));
             System.out.printf("Downloading jenkins plugin %s (%s)...%n", shortname, version);
-            FileUtils.copyURLToFile(url, plugin);
+            copyURLToFile(url, plugin);
         }
 
         Files.createSymbolicLink(install.toPath(), plugin.toPath());
