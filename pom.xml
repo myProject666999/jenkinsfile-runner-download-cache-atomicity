@@ -165,7 +165,7 @@ THE SOFTWARE.
                3.1814 understands it. -->
           <groupId>org.jenkins-ci.tools</groupId>
           <artifactId>maven-hpi-plugin</artifactId>
-          <version>3.1814.v77d15159f9b_d</version>
+          <version>3.1841.va_2f3e25d3a_5f</version>
         </plugin>
         <plugin>
           <!-- 1.31 from the Jenkins parent ships ASM that does not know Java 21
